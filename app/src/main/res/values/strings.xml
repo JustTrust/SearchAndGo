@@ -4,4 +4,8 @@
     <string name="driving_st">Driving</string>
     <string name="bicycle_st">Bicycle</string>
     <string name="walk_st">Walk</string>
+    <string name="msg_turn_on">Turn On</string>
+    <string name="provider">Please turn on GPS</string>
+    <string name="dosnt_current_location">Curren location out of reach. Check your settings.</string>
+
 </resources>
