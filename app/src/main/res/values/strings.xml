@@ -7,5 +7,6 @@
     <string name="msg_turn_on">Turn On</string>
     <string name="provider">Please turn on GPS</string>
     <string name="dosnt_current_location">Curren location out of reach. Check your settings.</string>
+    <string name="dont_rout">Don\'t have route for this point</string>
 
 </resources>

@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -34,15 +35,20 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
 
 import org.belichenko.a.searchtest.data_structure.PointsData;
 import org.belichenko.a.searchtest.data_structure.Results;
 import org.belichenko.a.searchtest.data_structure.googleNearbyPlaces;
+import org.belichenko.a.searchtest.map_points.Legs;
+import org.belichenko.a.searchtest.map_points.RootClass;
+import org.belichenko.a.searchtest.map_points.Steps;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,19 +66,22 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         , GoogleApiClient.ConnectionCallbacks
         , GoogleApiClient.OnConnectionFailedListener
+        , GoogleMap.OnMarkerClickListener
         , LocationListener
-        , Constant
-        , Callback<PointsData> {
+        , Constant {
 
     private static final String TAG = "Main activity";
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
     public Location currentLocation;
-    private ArrayList<Results> searchResult;
+    private ArrayList<Results> searchResult = new ArrayList<>();
     private AutoCompleteAdapter adapter;
-    private ArrayList<Marker> markers;
+    private ArrayList<Marker> markers = new ArrayList<>();
+    private ArrayList<Legs> routes = new ArrayList<>();
     private boolean isSearchView = false;
+    private RetrofitListener retrofitListener = new RetrofitListener();
+    private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
 
     @Bind(R.id.search_bt)
     ImageView mSearchBt;
@@ -119,8 +128,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mBottomPanel.setVisibility(View.GONE);
         mNavigationPanel.setVisibility(View.GONE);
 
-        markers = new ArrayList<>();
-        searchResult = new ArrayList<>();
         adapter = new AutoCompleteAdapter(this
                 , R.layout.simple_dropdown_item_2line
                 , searchResult);
@@ -139,7 +146,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
+        mMap.setOnMarkerClickListener(this);
     }
 
     private void buildGoogleApiClient() {
@@ -208,8 +215,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             Marker currentMarker = mMap.addMarker(new MarkerOptions()
                     .position(result.getPosition())
-                    .flat(false)
-                    .draggable(true)
+                    .flat(true)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp))
+                    .draggable(false)
                     .title(result.name)
                     .snippet(result.vicinity));
             markers.add(currentMarker);
@@ -400,8 +408,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markers.clear();
         Marker currentMarker = mMap.addMarker(new MarkerOptions()
                 .position(result.getPosition())
-                .flat(false)
-                .draggable(true)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp))
+                .flat(true)
+                .draggable(false)
                 .title(result.name)
                 .snippet(result.vicinity));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 15));
@@ -447,9 +456,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         Call<PointsData> call = nearbyPlaces.getPlacesData(filter);
         //asynchronous call
-        call.enqueue(this);
+        call.enqueue(retrofitListener);
     }
 
+    protected void makeRoute(Marker endPoint, String mode) {
+        if (endPoint == null || currentLocation == null) {
+            Log.d(TAG, "makeRoute() called with: " + "null");
+            return;
+        }
+        LinkedHashMap<String, String> filter = new LinkedHashMap<>();
+        filter.put("origin", String.valueOf(currentLocation.getLatitude()) + ","
+                + String.valueOf(currentLocation.getLongitude()));
+        filter.put("destination", String.valueOf(endPoint.getPosition().latitude) + ","
+                + String.valueOf(endPoint.getPosition().longitude));
+        filter.put("language", "ru");
+        filter.put("mode", mode);
+        filter.put("key", getString(R.string.google_maps_web_key));
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://maps.googleapis.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        // prepare call in Retrofit 2.0
+        googleNearbyPlaces nearbyPlaces = retrofit.create(googleNearbyPlaces.class);
+
+        Call<RootClass> call = nearbyPlaces.getRoute(filter);
+        //asynchronous call
+        call.enqueue(retrofitRouteListener);
+    }
 
     private void buildAlertMessageNoLocationService() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -466,28 +500,88 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onResponse(Call<PointsData> call, Response<PointsData> response) {
-        if (response.body() != null) {
-            if (response.body().status.equals("OK")) {
-                if (response.body().results != null) {
+    public boolean onMarkerClick(Marker marker) {
+        for (Marker oldMarker : markers) {
+            oldMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp));
+        }
+        marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
+        makeRoute(marker, "driving");
+        return false;
+    }
+
+
+    private class RetrofitListener implements Callback<PointsData> {
+
+        @Override
+        public void onResponse(Call<PointsData> call, Response<PointsData> response) {
+            if (response.body() != null) {
+                if (response.body().status.equals("OK")) {
+                    if (response.body().results != null) {
+                        searchResult.clear();
+                        searchResult.addAll(response.body().results);
+                        adapter.notifyDataSetChanged();
+                    }
+                } else {
                     searchResult.clear();
-                    searchResult.addAll(response.body().results);
                     adapter.notifyDataSetChanged();
                 }
-            } else {
-                searchResult.clear();
-//                searchResult.add(new Results(response.body().status));
-//                searchResult.add(new Results(response.body().error_message));
-                adapter.notifyDataSetChanged();
             }
+        }
+
+        @Override
+        public void onFailure(Call<PointsData> call, Throwable t) {
+            searchResult.clear();
+            searchResult.add(new Results(t.getLocalizedMessage()));
+            adapter.notifyDataSetChanged();
         }
     }
 
-    @Override
-    public void onFailure(Call<PointsData> call, Throwable t) {
-        searchResult.clear();
-        searchResult.add(new Results(t.getLocalizedMessage()));
-        adapter.notifyDataSetChanged();
+    private class RetrofitRouteListener implements Callback<RootClass> {
+
+        @Override
+        public void onResponse(Call<RootClass> call, Response<RootClass> response) {
+            if (response.body() != null) {
+                if (response.body().status.equals("OK")) {
+                    if (response.body().routes != null && response.body().routes.size() > 0) {
+                        routes.clear();
+                        routes.addAll(response.body().routes.get(0).legs);
+                        adapter.notifyDataSetChanged();
+                    }
+                } else {
+                    routes.clear();
+                }
+            }
+            if (routes.size() > 0) {
+                drawRoute();
+            }
+        }
+
+        @Override
+        public void onFailure(Call<RootClass> call, Throwable t) {
+            Log.d(TAG, "RetrofitRouteListener called with: "
+                    + "call = [" + call + "], t = [" + t + "]");
+        }
     }
 
+    private void drawRoute() {
+        if (mMap == null) {
+            Log.d(TAG, "drawRoute() called with: " + "null map");
+            return;
+        }
+        if (routes == null || routes.size() < 1) {
+            Toast.makeText(MapsActivity.this, getString(R.string.dont_rout), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ArrayList<LatLng> points = new ArrayList<>();
+        PolylineOptions polyLineOptions = new PolylineOptions();
+        points.add(new LatLng(routes.get(0).start_location.lat, routes.get(0).start_location.lng));
+        for (Steps step : routes.get(0).steps) {
+            points.add(new LatLng(step.start_location.lat, step.start_location.lng));
+        }
+        points.add(new LatLng(routes.get(0).end_location.lat, routes.get(0).end_location.lng));
+        polyLineOptions.addAll(points);
+        polyLineOptions.width(2);
+        polyLineOptions.color(Color.BLUE);
+        mMap.addPolyline(polyLineOptions);
+    }
 }
