@@ -84,6 +84,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArrayList<Legs> routes = new ArrayList<>();
     private ArrayList<Polyline> polylineArrayList = new ArrayList<>();
     private boolean isSearchView = false;
+    private boolean isBottomPanelVisible = false;
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
 
@@ -176,7 +177,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onPause() {
         super.onPause();
+        storeSettings();
         stopLocationUpdates();
+    }
+
+    private void storeSettings() {
+        SharedPreferences mPrefs = getSharedPreferences(STORAGE_OF_SETTINGS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor edit = mPrefs.edit();
+        Gson gson = new Gson();
+        if (currentLocation != null) {
+            edit.putString(CURRENT_LOCATION, gson.toJson(currentLocation));
+        }
+        if (mMap != null) {
+            CameraPosition cp = mMap.getCameraPosition();
+            edit.putString(CURRENT_CAMERA, gson.toJson(cp));
+        }
+        if (searchResult != null) {
+            edit.putString(PLACE_LIST, gson.toJson(searchResult));
+        }
+        edit.apply();
     }
 
     @Override
@@ -290,17 +309,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.car)
     protected void onCarBtClick() {
-
+        if (currentMarker == null) {
+            Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
+        } else {
+            makeRoute(currentMarker, "driving");
+        }
+        showHideBottomPanel(View.GONE);
     }
 
     @OnClick(R.id.bicycle)
     protected void onBicycleBtClick() {
-
+        if (currentMarker == null) {
+            Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
+        } else {
+            makeRoute(currentMarker, "bicycling");
+        }
+        showHideBottomPanel(View.GONE);
     }
 
     @OnClick(R.id.walk)
     protected void onWalkBtClick() {
-
+        if (currentMarker == null) {
+            Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
+        } else {
+            makeRoute(currentMarker, "walking");
+        }
+        showHideBottomPanel(View.GONE);
     }
 
     protected void stopLocationUpdates() {
@@ -516,10 +550,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
         makeRoute(marker, "driving");
-
+        showHideBottomPanel(View.VISIBLE);
         return false;
     }
 
+    private void showHideBottomPanel(int visibiliti) {
+        mBottomPanel.setVisibility(visibiliti);
+        if (visibiliti == View.VISIBLE) {
+            isBottomPanelVisible = true;
+        } else {
+            isBottomPanelVisible = false;
+        }
+    }
 
     private class RetrofitListener implements Callback<PointsData> {
 
