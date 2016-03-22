@@ -6,8 +6,10 @@
     <string name="walk_st">Walk</string>
     <string name="msg_turn_on">Turn On</string>
     <string name="provider">Please turn on GPS</string>
-    <string name="dosnt_current_location">Curren location out of reach. Check your settings.</string>
+    <string name="dosnt_current_location">Current location out of reach. Check your settings.</string>
     <string name="dont_rout">Don\'t have route for this point</string>
-    <string name="marker_gone">Marker doen\'t select</string>
+    <string name="marker_gone">Marker doesn\'t select</string>
+    <string name="internet_problem">Please check your internet connection</string>
+    <string name="dosnt_permission">Please add Location permissions to this applacation</string>
 
 </resources>

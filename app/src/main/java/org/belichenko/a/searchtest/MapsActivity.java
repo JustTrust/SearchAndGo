@@ -53,6 +53,7 @@ import org.belichenko.a.searchtest.map_points.RootClass;
 import org.belichenko.a.searchtest.map_points.Steps;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 
 import butterknife.Bind;
@@ -85,6 +86,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArrayList<Polyline> polylineArrayList = new ArrayList<>();
     private boolean isSearchView = false;
     private boolean isBottomPanelVisible = false;
+    private boolean showsTextPanel = false;
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
 
@@ -110,6 +112,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     LinearLayout mNavigationPanel;
     @Bind(R.id.bottom_panel)
     LinearLayout mBottomPanel;
+    @Bind(R.id.bottom_text_panel)
+    LinearLayout mBottomTextPanel;
 
     @Bind(R.id.autoCompleteSearchView)
     AutoCompleteTextView searshResultsView;
@@ -132,6 +136,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         mBottomPanel.setVisibility(View.GONE);
         mNavigationPanel.setVisibility(View.GONE);
+        mBottomTextPanel.setVisibility(View.GONE);
 
         adapter = new AutoCompleteAdapter(this
                 , R.layout.simple_dropdown_item_2line
@@ -142,6 +147,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Results result = (Results) parent.getItemAtPosition(position);
+                currentMarker = null;
                 setPinOnMap(result);
                 returnToMapView();
             }
@@ -152,6 +158,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.setOnMarkerClickListener(this);
+        restoreSrttings();
+        onSearchBtClick();
     }
 
     private void buildGoogleApiClient() {
@@ -198,6 +206,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         edit.apply();
     }
 
+    private void restoreSrttings() {
+        SharedPreferences sharedPref = getSharedPreferences(STORAGE_OF_SETTINGS, Context.MODE_PRIVATE);
+        Gson gson = new Gson();
+        CameraPosition cp = null;
+
+        if (sharedPref.contains(CURRENT_LOCATION)) {
+            String jsonLoc = sharedPref.getString(CURRENT_LOCATION, null);
+            currentLocation = gson.fromJson(jsonLoc, Location.class);
+        }
+        if (sharedPref.contains(CURRENT_CAMERA)) {
+            String jsonCam = sharedPref.getString(CURRENT_CAMERA, null);
+            cp = gson.fromJson(jsonCam, CameraPosition.class);
+        }
+        if (sharedPref.contains(PLACE_LIST)) {
+            String jsonMsg = sharedPref.getString(PLACE_LIST, null);
+            Results[] tempList = gson.fromJson(jsonMsg, Results[].class);
+            searchResult.clear();
+            searchResult.addAll(Arrays.asList(tempList));
+        }
+        if (currentLocation != null) {
+
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -223,11 +255,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.search_bt)
     protected void onSearchBtClick() {
+        if (mMap == null) {
+            Log.d(TAG, "onSearchBtClick() called with: " + "mMap == null");
+            return;
+        }
         returnToMapView();
         if (searchResult == null) {
             Log.d(TAG, "onSearchBtClick() called with: " + "null ArrayList");
             return;
         }
+        showHideBottomPanel(View.GONE);
+        currentMarker = null;
+        for (Polyline polyline : polylineArrayList) {
+            polyline.remove();
+        }
+        polylineArrayList.clear();
+        currentMarker = null;
         markers.clear();
         mMap.clear();
         Results result = null;
@@ -246,7 +289,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             markers.add(currentMarker);
         }
         if (result != null) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 12));
+            //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 14));
         }
     }
 
@@ -259,6 +302,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (mMap.getMapType() == GoogleMap.MAP_TYPE_SATELLITE) {
             mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         } else if (mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL) {
+            mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        } else if (mMap.getMapType() == GoogleMap.MAP_TYPE_HYBRID) {
             mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
         }
     }
@@ -277,14 +322,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         //move to current position
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+        if (ActivityCompat.checkSelfPermission(this
+                , Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this
+                , Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.dosnt_permission)
+                    , Toast.LENGTH_LONG).show();
             return;
         }
         mMap.setMyLocationEnabled(true);
@@ -309,31 +353,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.car)
     protected void onCarBtClick() {
-        if (currentMarker == null) {
-            Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
-        } else {
-            makeRoute(currentMarker, "driving");
-        }
-        showHideBottomPanel(View.GONE);
+        reDrawRoute("driving");
     }
 
     @OnClick(R.id.bicycle)
     protected void onBicycleBtClick() {
-        if (currentMarker == null) {
-            Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
-        } else {
-            makeRoute(currentMarker, "bicycling");
-        }
-        showHideBottomPanel(View.GONE);
+        reDrawRoute("bicycling");
     }
 
     @OnClick(R.id.walk)
     protected void onWalkBtClick() {
+        reDrawRoute("walking");
+    }
+
+    private void reDrawRoute(String mode) {
         if (currentMarker == null) {
             Toast.makeText(this, getString(R.string.marker_gone), Toast.LENGTH_SHORT).show();
         } else {
-            makeRoute(currentMarker, "walking");
+            for (Polyline polyline : polylineArrayList) {
+                polyline.remove();
+            }
+            polylineArrayList.clear();
+            makeRoute(currentMarker, mode);
         }
+        showsTextPanel = true;
         showHideBottomPanel(View.GONE);
     }
 
@@ -358,13 +401,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 , Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this
                 , Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.dosnt_permission)
+                    , Toast.LENGTH_LONG).show();
             Log.d(TAG, "onConnected() called with: " + "not permissions");
             return;
         }
@@ -381,13 +420,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 , Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this
                 , Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.dosnt_permission)
+                    , Toast.LENGTH_LONG).show();
             Log.d(TAG, "startLocationUpdates() called with: " + "not permissions");
             return;
         }
@@ -477,6 +512,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     protected void updatePlaces(String keyword) {
+        if (currentLocation == null) {
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.dosnt_current_location)
+                    , Toast.LENGTH_LONG).show();
+            return;
+        }
         LinkedHashMap<String, String> filter = new LinkedHashMap<>();
         filter.put("location", String.valueOf(currentLocation.getLatitude()) + ","
                 + String.valueOf(currentLocation.getLongitude()));
@@ -583,9 +624,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onFailure(Call<PointsData> call, Throwable t) {
-            searchResult.clear();
-            searchResult.add(new Results(t.getLocalizedMessage()));
-            adapter.notifyDataSetChanged();
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.internet_problem)
+                    , Toast.LENGTH_LONG).show();
         }
     }
 
@@ -598,10 +639,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     if (response.body().routes != null && response.body().routes.size() > 0) {
                         routes.clear();
                         routes.addAll(response.body().routes.get(0).legs);
-                        adapter.notifyDataSetChanged();
+                        showRouteDetails(response.body().routes.get(0).legs.get(0).distance.text
+                        , response.body().routes.get(0).legs.get(0).duration.text);
                     }
                 } else {
                     routes.clear();
+                    Toast.makeText(MapsActivity.this
+                            , getString(R.string.dont_rout)
+                            , Toast.LENGTH_SHORT).show();
                 }
             }
             if (routes.size() > 0) {
@@ -613,7 +658,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void onFailure(Call<RootClass> call, Throwable t) {
             Log.d(TAG, "RetrofitRouteListener called with: "
                     + "call = [" + call + "], t = [" + t + "]");
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.internet_problem)
+                    , Toast.LENGTH_LONG).show();
         }
+
+    }
+
+    private void showRouteDetails(String distance, String duration) {
 
     }
 
@@ -623,9 +675,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             return;
         }
         if (routes == null || routes.size() < 1) {
-            Toast.makeText(MapsActivity.this, getString(R.string.dont_rout), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.dont_rout), Toast.LENGTH_SHORT).show();
             return;
         }
+        for (Polyline polyline : polylineArrayList) {
+            polyline.remove();
+        }
+        polylineArrayList.clear();
         ArrayList<LatLng> points = new ArrayList<>();
         PolylineOptions polyLineOptions = new PolylineOptions();
         points.add(new LatLng(routes.get(0).start_location.lat, routes.get(0).start_location.lng));
