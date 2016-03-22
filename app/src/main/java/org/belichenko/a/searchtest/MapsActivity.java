@@ -15,6 +15,7 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
@@ -71,6 +72,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArrayList<Results> searchResult;
     private AutoCompleteAdapter adapter;
     private ArrayList<Marker> markers;
+    private boolean isSearchView = false;
 
     @Bind(R.id.search_bt)
     ImageView mSearchBt;
@@ -129,6 +131,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Results result = (Results) parent.getItemAtPosition(position);
                 setPinOnMap(result);
+                returnToMapView();
             }
         });
     }
@@ -177,16 +180,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.menu_bt)
     protected void onMenuBtClick() {
-        if (mNavigationPanel.getVisibility() == View.GONE) {
-            mNavigationPanel.setVisibility(View.VISIBLE);
-        } else if (mNavigationPanel.getVisibility() == View.VISIBLE) {
-            mNavigationPanel.setVisibility(View.GONE);
+        if (isSearchView) {
+            returnToMapView();
+        } else {
+            if (mNavigationPanel.getVisibility() == View.GONE) {
+                mNavigationPanel.setVisibility(View.VISIBLE);
+            } else if (mNavigationPanel.getVisibility() == View.VISIBLE) {
+                mNavigationPanel.setVisibility(View.GONE);
+            }
         }
     }
 
     @OnClick(R.id.search_bt)
     protected void onSearchBtClick() {
-
+        returnToMapView();
+        if (searchResult == null) {
+            Log.d(TAG, "onSearchBtClick() called with: " + "null ArrayList");
+            return;
+        }
+        markers.clear();
+        mMap.clear();
+        Results result = null;
+        for (int i = 0; (i < searchResult.size() && i < 20); i++) {
+            result = searchResult.get(i);
+            if (result == null) {
+                continue;
+            }
+            Marker currentMarker = mMap.addMarker(new MarkerOptions()
+                    .position(result.getPosition())
+                    .flat(false)
+                    .draggable(true)
+                    .title(result.name)
+                    .snippet(result.vicinity));
+            markers.add(currentMarker);
+        }
+        if (result != null) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 12));
+        }
     }
 
     @OnClick(R.id.map_earth)
@@ -294,6 +324,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         currentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         startLocationUpdates();
+        onPositionBtClick();
     }
 
     /**
@@ -361,6 +392,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void setPinOnMap(Results result) {
+        mMap.clear();
         if (result == null) {
             Log.d(TAG, "setPinOnMap() called with: " + "result = [" + null + "]");
             return;
@@ -378,9 +410,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnTextChanged(R.id.autoCompleteSearchView)
     protected void onTextChange(CharSequence s, int start, int before, int count) {
+        isSearchView = true;
+        mMenuBt.setImageResource(R.drawable.ic_clear_black_24dp);
         if (s.length() > 2) {
             updatePlaces(s.toString());
         }
+    }
+
+    private void returnToMapView() {
+        searshResultsView.setText("");
+        isSearchView = false;
+        // hide keyboard
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+        mMenuBt.setImageResource(R.drawable.ic_play_arrow_black_24dp);
     }
 
     protected void updatePlaces(String keyword) {
