@@ -42,6 +42,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
+import com.google.maps.android.PolyUtil;
 
 import org.belichenko.a.searchtest.data_structure.PointsData;
 import org.belichenko.a.searchtest.data_structure.Results;
@@ -223,7 +224,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             markers.add(currentMarker);
         }
         if (result != null) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 12));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 13));
         }
     }
 
@@ -464,6 +465,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "makeRoute() called with: " + "null");
             return;
         }
+
         LinkedHashMap<String, String> filter = new LinkedHashMap<>();
         filter.put("origin", String.valueOf(currentLocation.getLatitude()) + ","
                 + String.valueOf(currentLocation.getLongitude()));
@@ -501,11 +503,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public boolean onMarkerClick(Marker marker) {
+        mMap.clear();
+        ArrayList<Marker> newMarkers = new ArrayList<>();
         for (Marker oldMarker : markers) {
-            oldMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp));
+            int icon = 0;
+            if (oldMarker.equals(marker)) {
+                icon = R.drawable.ic_person_pin_black_24dp;
+            } else {
+                icon = R.drawable.ic_place_black_24dp;
+            }
+            Marker newMark = mMap.addMarker(new MarkerOptions()
+                    .position(oldMarker.getPosition())
+                    .title(oldMarker.getTitle())
+                    .snippet(oldMarker.getSnippet())
+                    .flat(true)
+                    .draggable(false)
+                    .icon(BitmapDescriptorFactory.fromResource(icon)));
+            newMarkers.add(newMark);
         }
-        marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
+        markers.clear();
+        markers.addAll(newMarkers);
+
         makeRoute(marker, "driving");
+
         return false;
     }
 
@@ -561,6 +581,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "RetrofitRouteListener called with: "
                     + "call = [" + call + "], t = [" + t + "]");
         }
+
     }
 
     private void drawRoute() {
@@ -576,7 +597,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         PolylineOptions polyLineOptions = new PolylineOptions();
         points.add(new LatLng(routes.get(0).start_location.lat, routes.get(0).start_location.lng));
         for (Steps step : routes.get(0).steps) {
-            points.add(new LatLng(step.start_location.lat, step.start_location.lng));
+            points.addAll(PolyUtil.decode(step.polyline.points));
         }
         points.add(new LatLng(routes.get(0).end_location.lat, routes.get(0).end_location.lng));
         polyLineOptions.addAll(points);
