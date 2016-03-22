@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">SearchTest</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="app_name">Search Test</string>
+    <string name="title_activity_maps">Map Searcher</string>
     <string name="driving_st">Driving</string>
     <string name="bicycle_st">Bicycle</string>
     <string name="walk_st">Walk</string>

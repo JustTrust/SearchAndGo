@@ -15,6 +15,8 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -31,24 +33,44 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
+
+import org.belichenko.a.searchtest.data_structure.PointsData;
+import org.belichenko.a.searchtest.data_structure.Results;
+import org.belichenko.a.searchtest.data_structure.googleNearbyPlaces;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.OnTextChanged;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         , GoogleApiClient.ConnectionCallbacks
         , GoogleApiClient.OnConnectionFailedListener
         , LocationListener
-        , Constant {
+        , Constant
+        , Callback<PointsData> {
 
     private static final String TAG = "Main activity";
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
     public Location currentLocation;
+    private ArrayList<Results> searchResult;
+    private AutoCompleteAdapter adapter;
+    private ArrayList<Marker> markers;
 
     @Bind(R.id.search_bt)
     ImageView mSearchBt;
@@ -73,6 +95,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Bind(R.id.bottom_panel)
     LinearLayout mBottomPanel;
 
+    @Bind(R.id.autoCompleteSearchView)
+    AutoCompleteTextView searshResultsView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +105,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
+        ButterKnife.setDebug(true);
         ButterKnife.bind(this);
         mapFragment.getMapAsync(this);
         checkLocationServiceEnabled();
@@ -92,8 +117,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mBottomPanel.setVisibility(View.GONE);
         mNavigationPanel.setVisibility(View.GONE);
 
-    }
+        markers = new ArrayList<>();
+        searchResult = new ArrayList<>();
+        adapter = new AutoCompleteAdapter(this
+                , R.layout.simple_dropdown_item_2line
+                , searchResult);
+        searshResultsView.setAdapter(adapter);
 
+        searshResultsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Results result = (Results) parent.getItemAtPosition(position);
+                setPinOnMap(result);
+            }
+        });
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -118,6 +156,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mLocationRequest.setInterval(TWENTY_SECONDS);
         mLocationRequest.setFastestInterval(TEN_SECONDS);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mGoogleApiClient.isConnected()) {
+            startLocationUpdates();
+        } else {
+            Log.d(TAG, "onResume() mGoogleApiClient not connected");
+        }
     }
 
     @OnClick(R.id.menu_bt)
@@ -182,7 +237,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "onDirectionBtClick() called with: " + "map == null");
             return;
         }
-
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(mMap.getCameraPosition().target)
+                .zoom(mMap.getCameraPosition().zoom)
+                .bearing(0)
+                .tilt(0)
+                .build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
     @OnClick(R.id.car)
@@ -198,6 +259,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @OnClick(R.id.walk)
     protected void onWalkBtClick() {
 
+    }
+
+    protected void stopLocationUpdates() {
+
+        if (mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(
+                    mGoogleApiClient, this);
+            Log.d(TAG, "stopLocationUpdates()");
+        } else {
+            Log.d(TAG, "stopLocationUpdates() mGoogleApiClient not connected");
+        }
+
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.disconnect();
+        }
     }
 
     @Override
@@ -267,7 +343,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed() called with: " + "connectionResult = [" + connectionResult + "]");
     }
 
@@ -284,6 +360,51 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    private void setPinOnMap(Results result) {
+        if (result == null) {
+            Log.d(TAG, "setPinOnMap() called with: " + "result = [" + null + "]");
+            return;
+        }
+        markers.clear();
+        Marker currentMarker = mMap.addMarker(new MarkerOptions()
+                .position(result.getPosition())
+                .flat(false)
+                .draggable(true)
+                .title(result.name)
+                .snippet(result.vicinity));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 15));
+        markers.add(currentMarker);
+    }
+
+    @OnTextChanged(R.id.autoCompleteSearchView)
+    protected void onTextChange(CharSequence s, int start, int before, int count) {
+        if (s.length() > 2) {
+            updatePlaces(s.toString());
+        }
+    }
+
+    protected void updatePlaces(String keyword) {
+        LinkedHashMap<String, String> filter = new LinkedHashMap<>();
+        filter.put("location", String.valueOf(currentLocation.getLatitude()) + ","
+                + String.valueOf(currentLocation.getLongitude()));
+        filter.put("rankby", "distance");
+        filter.put("language", "ru");
+        filter.put("keyword", keyword);
+        filter.put("key", getString(R.string.google_maps_web_key));
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://maps.googleapis.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        // prepare call in Retrofit 2.0
+        googleNearbyPlaces nearbyPlaces = retrofit.create(googleNearbyPlaces.class);
+
+        Call<PointsData> call = nearbyPlaces.getPlacesData(filter);
+        //asynchronous call
+        call.enqueue(this);
+    }
+
+
     private void buildAlertMessageNoLocationService() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setCancelable(true)
@@ -296,6 +417,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 });
         final AlertDialog alert = builder.create();
         alert.show();
+    }
+
+    @Override
+    public void onResponse(Call<PointsData> call, Response<PointsData> response) {
+        if (response.body() != null) {
+            if (response.body().status.equals("OK")) {
+                if (response.body().results != null) {
+                    searchResult.clear();
+                    searchResult.addAll(response.body().results);
+                    adapter.notifyDataSetChanged();
+                }
+            } else {
+                searchResult.clear();
+//                searchResult.add(new Results(response.body().status));
+//                searchResult.add(new Results(response.body().error_message));
+                adapter.notifyDataSetChanged();
+            }
+        }
+    }
+
+    @Override
+    public void onFailure(Call<PointsData> call, Throwable t) {
+        searchResult.clear();
+        searchResult.add(new Results(t.getLocalizedMessage()));
+        adapter.notifyDataSetChanged();
     }
 
 }
