@@ -16,6 +16,8 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
@@ -252,8 +254,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             returnToMapView();
         } else {
             if (mNavigationPanel.getVisibility() == View.GONE) {
+                Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_rght);
+                Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.from_right_anim);
+                mMenuBt.startAnimation(animBt);
+                mNavigationPanel.startAnimation(animPanel);
                 mNavigationPanel.setVisibility(View.VISIBLE);
             } else if (mNavigationPanel.getVisibility() == View.VISIBLE) {
+                Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_left);
+                Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.go_right_anim);
+                mMenuBt.startAnimation(animBt);
+                mNavigationPanel.startAnimation(animPanel);
+                mNavigationPanel.setVisibility(View.VISIBLE);
                 mNavigationPanel.setVisibility(View.GONE);
             }
         }
@@ -653,7 +664,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         routes.clear();
                         routes.addAll(response.body().routes.get(0).legs);
                         showRouteDetails(response.body().routes.get(0).legs.get(0).distance.text
-                        , response.body().routes.get(0).legs.get(0).duration.text);
+                                , response.body().routes.get(0).legs.get(0).duration.text);
                     }
                 } else {
                     routes.clear();
@@ -680,8 +691,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void showRouteDetails(String distance, String duration) {
         if (showsTextPanel) {
-            mTextDistance.setText(getText(R.string.distance_text)+" "+ distance);
-            mTextDuration.setText(getText(R.string.duration_text)+" "+ duration);
+            mTextDistance.setText(getText(R.string.distance_text) + " " + distance);
+            mTextDuration.setText(getText(R.string.duration_text) + " " + duration);
             mBottomTextPanel.setVisibility(View.VISIBLE);
             showsTextPanel = false;
         }
