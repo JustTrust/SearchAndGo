@@ -22,6 +22,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -77,7 +78,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
-    public Location currentLocation;
+    private Location currentLocation;
     private Marker currentMarker;
     private ArrayList<Results> searchResult = new ArrayList<>();
     private AutoCompleteAdapter adapter;
@@ -100,6 +101,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ImageView mPositionBt;
     @Bind(R.id.map_direction)
     ImageView mDirectionBt;
+
+    @Bind(R.id.textDistance)
+    TextView mTextDistance;
+    @Bind(R.id.textDuration)
+    TextView mTextDuration;
 
     @Bind(R.id.car)
     RelativeLayout mCarBt;
@@ -264,6 +270,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "onSearchBtClick() called with: " + "null ArrayList");
             return;
         }
+        mBottomTextPanel.setVisibility(View.GONE);
         showHideBottomPanel(View.GONE);
         currentMarker = null;
         for (Polyline polyline : polylineArrayList) {
@@ -447,11 +454,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onLocationChanged(Location location) {
         currentLocation = location;
-        SharedPreferences mPrefs = getSharedPreferences(STORAGE_OF_SETTINGS, Context.MODE_PRIVATE);
-        SharedPreferences.Editor edit = mPrefs.edit();
-        Gson gson = new Gson();
-        edit.putString(CURRENT_LOCATION, gson.toJson(currentLocation));
-        edit.apply();
     }
 
     @Override
@@ -539,8 +541,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     protected void makeRoute(Marker endPoint, String mode) {
-        if (endPoint == null || currentLocation == null) {
-            Log.d(TAG, "makeRoute() called with: " + "null");
+        if (endPoint == null) {
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.marker_gone)
+                    , Toast.LENGTH_LONG).show();
+            Log.d(TAG, "makeRoute() called with: " + "endPoint == null");
+            return;
+        }
+        if (currentLocation == null) {
+            Toast.makeText(MapsActivity.this
+                    , getString(R.string.dosnt_current_location)
+                    , Toast.LENGTH_LONG).show();
+            Log.d(TAG, "makeRoute() called with: " + "currentLocation == null");
             return;
         }
 
@@ -581,6 +593,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public boolean onMarkerClick(Marker marker) {
+        mBottomTextPanel.setVisibility(View.GONE);
         currentMarker = marker;
         for (Polyline polyline : polylineArrayList) {
             polyline.remove();
@@ -666,7 +679,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void showRouteDetails(String distance, String duration) {
-
+        if (showsTextPanel) {
+            mTextDistance.setText(getText(R.string.distance_text)+" "+ distance);
+            mTextDuration.setText(getText(R.string.duration_text)+" "+ duration);
+            mBottomTextPanel.setVisibility(View.VISIBLE);
+            showsTextPanel = false;
+        }
     }
 
     private void drawRoute() {

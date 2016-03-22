@@ -192,7 +192,7 @@
             android:textAppearance="?android:attr/textAppearanceMedium"
             tools:text="Distanse - 2.2 km"
             android:layout_gravity="center_horizontal"
-            android:id="@+id/textView" />
+            android:id="@+id/textDistance" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -201,7 +201,7 @@
             android:textAppearance="?android:attr/textAppearanceMedium"
             tools:text="Arrival time - 40 min"
             android:layout_gravity="center_horizontal"
-            android:id="@+id/textView2" />
+            android:id="@+id/textDuration" />
     </LinearLayout>
 
 </RelativeLayout>
