@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
 import com.google.maps.android.PolyUtil;
@@ -76,10 +77,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
     public Location currentLocation;
+    private Marker currentMarker;
     private ArrayList<Results> searchResult = new ArrayList<>();
     private AutoCompleteAdapter adapter;
     private ArrayList<Marker> markers = new ArrayList<>();
     private ArrayList<Legs> routes = new ArrayList<>();
+    private ArrayList<Polyline> polylineArrayList = new ArrayList<>();
     private boolean isSearchView = false;
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
@@ -224,7 +227,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             markers.add(currentMarker);
         }
         if (result != null) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 13));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 12));
         }
     }
 
@@ -503,27 +506,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        mMap.clear();
-        ArrayList<Marker> newMarkers = new ArrayList<>();
-        for (Marker oldMarker : markers) {
-            int icon = 0;
-            if (oldMarker.equals(marker)) {
-                icon = R.drawable.ic_person_pin_black_24dp;
-            } else {
-                icon = R.drawable.ic_place_black_24dp;
-            }
-            Marker newMark = mMap.addMarker(new MarkerOptions()
-                    .position(oldMarker.getPosition())
-                    .title(oldMarker.getTitle())
-                    .snippet(oldMarker.getSnippet())
-                    .flat(true)
-                    .draggable(false)
-                    .icon(BitmapDescriptorFactory.fromResource(icon)));
-            newMarkers.add(newMark);
+        currentMarker = marker;
+        for (Polyline polyline : polylineArrayList) {
+            polyline.remove();
         }
-        markers.clear();
-        markers.addAll(newMarkers);
-
+        polylineArrayList.clear();
+        for (Marker oldMarker : markers) {
+            oldMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp));
+        }
+        marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
         makeRoute(marker, "driving");
 
         return false;
@@ -603,6 +594,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         polyLineOptions.addAll(points);
         polyLineOptions.width(2);
         polyLineOptions.color(Color.BLUE);
-        mMap.addPolyline(polyLineOptions);
+        Polyline newPolyline = mMap.addPolyline(polyLineOptions);
+        polylineArrayList.add(newPolyline);
     }
 }
