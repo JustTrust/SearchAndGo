@@ -92,6 +92,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
 
+    @SuppressWarnings("unused")
     @Bind(R.id.search_bt)
     ImageView mSearchBt;
     @Bind(R.id.menu_bt)
@@ -132,7 +133,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        ButterKnife.setDebug(true);
+        ButterKnife.setDebug(false);
         ButterKnife.bind(this);
         mapFragment.getMapAsync(this);
         checkLocationServiceEnabled();
@@ -251,6 +252,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.menu_bt)
     protected void onMenuBtClick() {
         if (isSearchView) {
@@ -317,6 +319,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.map_earth)
     protected void onEarthBtClick() {
         if (mMap == null) {
@@ -332,6 +335,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.map_position)
     protected void onPositionBtClick() {
         if (currentLocation == null) {
@@ -361,6 +365,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .newLatLngZoom(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), 15));
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.map_direction)
     protected void onDirectionBtClick() {
         if (mMap == null) {
@@ -376,16 +381,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.car)
     protected void onCarBtClick() {
         reDrawRoute("driving");
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.bicycle)
     protected void onBicycleBtClick() {
         reDrawRoute("bicycling");
     }
 
+    @SuppressWarnings("unused")
     @OnClick(R.id.walk)
     protected void onWalkBtClick() {
         reDrawRoute("walking");
@@ -512,6 +520,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markers.add(currentMarker);
     }
 
+    @SuppressWarnings("unused")
     @OnTextChanged(R.id.autoCompleteSearchView)
     protected void onTextChange(CharSequence s, int start, int before, int count) {
 
