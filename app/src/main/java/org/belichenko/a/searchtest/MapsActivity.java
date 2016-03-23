@@ -88,7 +88,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArrayList<Legs> routes = new ArrayList<>();
     private ArrayList<Polyline> polylineArrayList = new ArrayList<>();
     private boolean isSearchView = false;
-    private boolean isBottomPanelVisible = false;
     private boolean showsTextPanel = false;
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
@@ -156,6 +155,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Results result = (Results) parent.getItemAtPosition(position);
                 currentMarker = null;
+                if (mBottomTextPanel.getVisibility() == View.VISIBLE) {
+                    showHideBottomPanel(mBottomTextPanel, View.GONE);
+                }
                 setPinOnMap(result);
                 returnToMapView();
             }
@@ -267,6 +269,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 mNavigationPanel.setVisibility(View.VISIBLE);
                 mNavigationPanel.setVisibility(View.GONE);
             }
+            setMenuBtIcon();
         }
     }
 
@@ -281,8 +284,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "onSearchBtClick() called with: " + "null ArrayList");
             return;
         }
-        mBottomTextPanel.setVisibility(View.GONE);
-        showHideBottomPanel(View.GONE);
+
+        showHideBottomPanel(mBottomPanel, View.GONE);
+        showHideBottomPanel(mBottomTextPanel, View.GONE);
+
         currentMarker = null;
         for (Polyline polyline : polylineArrayList) {
             polyline.remove();
@@ -395,7 +400,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             makeRoute(currentMarker, mode);
         }
         showsTextPanel = true;
-        showHideBottomPanel(View.GONE);
+        showHideBottomPanel(mBottomPanel, View.GONE);
     }
 
     protected void stopLocationUpdates() {
@@ -486,11 +491,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void setPinOnMap(Results result) {
-        mMap.clear();
+
         if (result == null) {
             Log.d(TAG, "setPinOnMap() called with: " + "result = [" + null + "]");
             return;
         }
+        mMap.clear();
+        searchResult.clear();
+        searchResult.add(result);
         markers.clear();
         Marker currentMarker = mMap.addMarker(new MarkerOptions()
                 .position(result.getPosition())
@@ -505,8 +513,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnTextChanged(R.id.autoCompleteSearchView)
     protected void onTextChange(CharSequence s, int start, int before, int count) {
-        isSearchView = true;
-        mMenuBt.setImageResource(R.drawable.ic_clear_black_24dp);
+
+        if (s.length() > 0) {
+            mMenuBt.setImageResource(R.drawable.ic_clear_black_24dp);
+            isSearchView = true;
+        } else {
+            setMenuBtIcon();
+        }
         if (s.length() > 2) {
             updatePlaces(s.toString());
         }
@@ -521,7 +534,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
-        mMenuBt.setImageResource(R.drawable.ic_play_arrow_black_24dp);
+        setMenuBtIcon();
+    }
+
+    private void setMenuBtIcon() {
+        if (mNavigationPanel.getVisibility() == View.VISIBLE) {
+            mMenuBt.setImageResource(R.drawable.ic_play_arrow_down_24dp);
+        } else {
+            mMenuBt.setImageResource(R.drawable.ic_play_arrow_black_24dp);
+        }
     }
 
     protected void updatePlaces(String keyword) {
@@ -604,28 +625,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        mBottomTextPanel.setVisibility(View.GONE);
-        currentMarker = marker;
+        if (mBottomTextPanel.getVisibility() == View.VISIBLE) {
+            showHideBottomPanel(mBottomTextPanel, View.GONE);
+        }
         for (Polyline polyline : polylineArrayList) {
             polyline.remove();
         }
         polylineArrayList.clear();
-        for (Marker oldMarker : markers) {
-            oldMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp));
+        if (!marker.equals(currentMarker)) {
+            currentMarker = marker;
+            for (Marker oldMarker : markers) {
+                oldMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_place_black_24dp));
+            }
+            marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
         }
-        marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_black_24dp));
         makeRoute(marker, "driving");
-        showHideBottomPanel(View.VISIBLE);
+        showHideBottomPanel(mBottomPanel, View.VISIBLE);
         return false;
     }
 
-    private void showHideBottomPanel(int visibiliti) {
-        mBottomPanel.setVisibility(visibiliti);
-        if (visibiliti == View.VISIBLE) {
-            isBottomPanelVisible = true;
+    private void showHideBottomPanel(View panel, int visibility) {
+        Animation animPanel;
+        if (visibility == View.VISIBLE) {
+            animPanel = AnimationUtils.loadAnimation(this, R.anim.go_up);
         } else {
-            isBottomPanelVisible = false;
+            animPanel = AnimationUtils.loadAnimation(this, R.anim.go_down);
         }
+        panel.startAnimation(animPanel);
+        panel.setVisibility(visibility);
     }
 
     private class RetrofitListener implements Callback<PointsData> {
@@ -667,6 +694,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 , response.body().routes.get(0).legs.get(0).duration.text);
                     }
                 } else {
+                    showsTextPanel = false;
                     routes.clear();
                     Toast.makeText(MapsActivity.this
                             , getString(R.string.dont_rout)
@@ -685,6 +713,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Toast.makeText(MapsActivity.this
                     , getString(R.string.internet_problem)
                     , Toast.LENGTH_LONG).show();
+            showsTextPanel = false;
         }
 
     }
@@ -693,7 +722,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (showsTextPanel) {
             mTextDistance.setText(getText(R.string.distance_text) + " " + distance);
             mTextDuration.setText(getText(R.string.duration_text) + " " + duration);
-            mBottomTextPanel.setVisibility(View.VISIBLE);
+            showHideBottomPanel(mBottomTextPanel, View.VISIBLE);
             showsTextPanel = false;
         }
     }
