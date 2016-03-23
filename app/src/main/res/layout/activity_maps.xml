@@ -42,6 +42,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_weight="8"
+            android:singleLine="true"
             android:background="@null"
             android:hint="@string/place_autocomplete_search_hint"
             android:lines="1" />

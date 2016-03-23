@@ -219,7 +219,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void restoreSrttings() {
         SharedPreferences sharedPref = getSharedPreferences(STORAGE_OF_SETTINGS, Context.MODE_PRIVATE);
         Gson gson = new Gson();
-        CameraPosition cp = null;
+        CameraPosition cameraPosition = null;
 
         if (sharedPref.contains(CURRENT_LOCATION)) {
             String jsonLoc = sharedPref.getString(CURRENT_LOCATION, null);
@@ -227,7 +227,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         if (sharedPref.contains(CURRENT_CAMERA)) {
             String jsonCam = sharedPref.getString(CURRENT_CAMERA, null);
-            cp = gson.fromJson(jsonCam, CameraPosition.class);
+            cameraPosition = gson.fromJson(jsonCam, CameraPosition.class);
         }
         if (sharedPref.contains(PLACE_LIST)) {
             String jsonMsg = sharedPref.getString(PLACE_LIST, null);
@@ -235,8 +235,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             searchResult.clear();
             searchResult.addAll(Arrays.asList(tempList));
         }
-        if (currentLocation != null) {
-
+        if (cameraPosition != null) {
+            mMap.moveCamera(CameraUpdateFactory
+                    .newLatLngZoom(cameraPosition.target, cameraPosition.zoom));
         }
     }
 
@@ -288,7 +289,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         showHideBottomPanel(mBottomPanel, View.GONE);
         showHideBottomPanel(mBottomTextPanel, View.GONE);
 
-        currentMarker = null;
         for (Polyline polyline : polylineArrayList) {
             polyline.remove();
         }
@@ -296,6 +296,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         currentMarker = null;
         markers.clear();
         mMap.clear();
+
         Results result = null;
         for (int i = 0; (i < searchResult.size() && i < 20); i++) {
             result = searchResult.get(i);
@@ -349,6 +350,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 , Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this
                 , Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
             Toast.makeText(MapsActivity.this
                     , getString(R.string.dosnt_permission)
                     , Toast.LENGTH_LONG).show();
@@ -432,7 +434,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         currentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         startLocationUpdates();
-        onPositionBtClick();
     }
 
     /**
@@ -533,6 +534,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (view != null) {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+        if (mBottomTextPanel.getVisibility() == View.VISIBLE){
+            showHideBottomPanel(mBottomTextPanel, View.GONE);
         }
         setMenuBtIcon();
     }
@@ -661,15 +665,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void onResponse(Call<PointsData> call, Response<PointsData> response) {
             if (response.body() != null) {
                 if (response.body().status.equals("OK")) {
-                    if (response.body().results != null) {
+                    if (response.body().results != null && response.body().results.size() > 0) {
                         searchResult.clear();
                         searchResult.addAll(response.body().results);
                         adapter.notifyDataSetChanged();
                     }
                 } else {
-                    searchResult.clear();
-                    adapter.notifyDataSetChanged();
-                }
+                    Log.d(TAG, "onResponse() called with: " + "call = [" + call + "], response = [" + response + "]");                }
             }
         }
 
