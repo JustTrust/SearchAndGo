@@ -258,21 +258,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (isSearchView) {
             returnToMapView();
         } else {
-            if (mNavigationPanel.getVisibility() == View.GONE) {
-                Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_rght);
-                Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.from_right_anim);
-                mMenuBt.startAnimation(animBt);
-                mNavigationPanel.startAnimation(animPanel);
-                mNavigationPanel.setVisibility(View.VISIBLE);
-            } else if (mNavigationPanel.getVisibility() == View.VISIBLE) {
-                Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_left);
-                Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.go_right_anim);
-                mMenuBt.startAnimation(animBt);
-                mNavigationPanel.startAnimation(animPanel);
-                mNavigationPanel.setVisibility(View.VISIBLE);
-                mNavigationPanel.setVisibility(View.GONE);
-            }
-            setMenuBtIcon();
+            animateMenuAndButton();
         }
     }
 
@@ -544,7 +530,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
-        if (mBottomTextPanel.getVisibility() == View.VISIBLE){
+        if (mBottomTextPanel.getVisibility() == View.VISIBLE) {
             showHideBottomPanel(mBottomTextPanel, View.GONE);
         }
         setMenuBtIcon();
@@ -555,6 +541,88 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMenuBt.setImageResource(R.drawable.ic_play_arrow_down_24dp);
         } else {
             mMenuBt.setImageResource(R.drawable.ic_play_arrow_black_24dp);
+        }
+    }
+
+    private void animateMenuAndButton() {
+        if (mNavigationPanel.getVisibility() == View.GONE) {
+
+            Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_rght);
+            animBt.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    mMenuBt.setImageResource(R.drawable.ic_play_arrow_down_24dp);
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            });
+            mMenuBt.clearAnimation();
+            mMenuBt.startAnimation(animBt);
+
+
+            Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.from_right_anim);
+            animPanel.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    mNavigationPanel.setVisibility(View.VISIBLE);
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            });
+            mNavigationPanel.clearAnimation();
+            mNavigationPanel.startAnimation(animPanel);
+
+        } else if (mNavigationPanel.getVisibility() == View.VISIBLE) {
+
+            Animation animBt = AnimationUtils.loadAnimation(this, R.anim.rotate_left);
+            animBt.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    mMenuBt.setImageResource(R.drawable.ic_play_arrow_black_24dp);
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            });
+            mMenuBt.clearAnimation();
+            mMenuBt.startAnimation(animBt);
+
+
+            Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.go_right_anim);
+            animPanel.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    mNavigationPanel.setVisibility(View.GONE);
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            });
+            mNavigationPanel.clearAnimation();
+            mNavigationPanel.startAnimation(animPanel);
+
         }
     }
 
@@ -680,7 +748,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         adapter.notifyDataSetChanged();
                     }
                 } else {
-                    Log.d(TAG, "onResponse() called with: " + "call = [" + call + "], response = [" + response + "]");                }
+                    Log.d(TAG, "onResponse() called with: " + "call = [" + call + "], response = [" + response + "]");
+                }
             }
         }
 
