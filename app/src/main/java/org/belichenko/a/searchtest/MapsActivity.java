@@ -1,6 +1,7 @@
 package org.belichenko.a.searchtest;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -300,7 +301,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markers.clear();
         mMap.clear();
 
-        Results result = null;
+        Results result;
         for (int i = 0; (i < searchResult.size() && i < 20); i++) {
             result = searchResult.get(i);
             if (result == null) {
@@ -315,9 +316,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .snippet(result.vicinity));
             markers.add(currentMarker);
         }
-        if (result != null) {
-            //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 14));
-        }
+//        if (result != null) {
+//            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(result.getPosition(), 14));
+//        }
     }
 
     @SuppressWarnings("unused")
@@ -813,6 +814,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    @SuppressLint("SetTextI18n")
+    @SuppressWarnings("deprecation")
     private void showRouteDetails(String distance, String duration) {
         if (showsTextPanel) {
             mTextDistance.setText(getText(R.string.distance_text) + " " + distance);
