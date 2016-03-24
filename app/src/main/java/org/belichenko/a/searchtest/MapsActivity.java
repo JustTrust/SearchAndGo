@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -58,6 +59,7 @@ import org.belichenko.a.searchtest.map_points.Steps;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -91,6 +93,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean showsTextPanel = false;
     private RetrofitListener retrofitListener = new RetrofitListener();
     private RetrofitRouteListener retrofitRouteListener = new RetrofitRouteListener();
+    private TextToSpeech textToSpeech;
 
     @SuppressWarnings("unused")
     @Bind(R.id.search_bt)
@@ -145,6 +148,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mBottomPanel.setVisibility(View.GONE);
         mNavigationPanel.setVisibility(View.GONE);
         mBottomTextPanel.setVisibility(View.GONE);
+        textToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if(status != TextToSpeech.ERROR) {
+                    textToSpeech.setLanguage(Locale.UK);
+                }
+            }
+        });
 
         adapter = new AutoCompleteAdapter(this
                 , R.layout.simple_dropdown_item_2line
@@ -198,6 +209,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onPause();
         storeSettings();
         stopLocationUpdates();
+        if(textToSpeech !=null){
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 
     private void storeSettings() {
@@ -674,7 +689,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 + String.valueOf(currentLocation.getLongitude()));
         filter.put("destination", String.valueOf(endPoint.getPosition().latitude) + ","
                 + String.valueOf(endPoint.getPosition().longitude));
-        filter.put("language", "ru");
+        filter.put("language", "en");
         filter.put("mode", mode);
         filter.put("key", getString(R.string.google_maps_web_key));
 
@@ -802,6 +817,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (showsTextPanel) {
             mTextDistance.setText(getText(R.string.distance_text) + " " + distance);
             mTextDuration.setText(getText(R.string.duration_text) + " " + duration);
+            String toSpeak = mTextDistance.getText().toString() + "\n"
+                    +mTextDuration.getText().toString();
+            textToSpeech.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
             showHideBottomPanel(mBottomTextPanel, View.VISIBLE);
             showsTextPanel = false;
         }
