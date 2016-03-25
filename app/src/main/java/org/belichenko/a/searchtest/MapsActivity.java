@@ -581,7 +581,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMenuBt.clearAnimation();
             mMenuBt.startAnimation(animBt);
 
-
             Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.from_right_anim);
             animPanel.setAnimationListener(new Animation.AnimationListener() {
                 @Override
@@ -620,7 +619,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMenuBt.clearAnimation();
             mMenuBt.startAnimation(animBt);
 
-
             Animation animPanel = AnimationUtils.loadAnimation(this, R.anim.go_right_anim);
             animPanel.setAnimationListener(new Animation.AnimationListener() {
                 @Override
@@ -638,7 +636,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             });
             mNavigationPanel.clearAnimation();
             mNavigationPanel.startAnimation(animPanel);
-
         }
     }
 

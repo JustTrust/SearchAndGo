@@ -1,4 +1,5 @@
 <resources>
     <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyAcuoKYPE7xblCg7NY8qcejHAf0Kqu8CqE</string>
     <string name="google_maps_web_key" templateMergeStrategy="preserve" translatable="false">AIzaSyDhTQmR46ggIuQ_XiR6NL1AEgbQPHAXyJQ</string>
+    <string name="google_app_id">search_and_go</string>
 </resources>
